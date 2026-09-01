@@ -32,7 +32,7 @@ from loan group by loan_status;
 
 
 -- loan approved status in percentage
-select count(*)*100/999 as loan_approved_percenrage
+select round(count(*)*100/999,2) as loan_approved_percenrage
  from loan where loan_status = "Approved";
  
  
@@ -59,8 +59,8 @@ describe loan;
 
 -- minimum ,maximum  and  average age of applicant 
 select min(age) as minimum_age ,
- max(age) as maximum_age ,
- avg(age) as average_age
+avg(age) as average_age,
+ max(age) as maximum_age 
  from loan;
  
  
@@ -80,7 +80,7 @@ select min(age) as minimum_age ,
 
 -- minimum , maximum and average loan term
  select min(loan_term)  as minimum_loan_term_in_days, 
- max(loan_term) as maximum_lloan_term_in_days,
+ max(loan_term) as maximum_loan_term_in_days,
  avg(loan_term) as average_loan_term_in_days
  from loan;
 
@@ -142,24 +142,34 @@ round(sum(case when gender = "male"
 select count(*) as female_loane_approved
 from loan where loan_status = "Approved" and gender = "female" ;
 
+select 
+round(sum(case when gender = "female"
+ and loan_status = "Approved" 
+ then 1 else 0 end)/sum(case when gender = "female" then 1 else 0 end) * 100 ,2) 
+ as male_loan_approval_rate 
+ from loan;
 
 -- married persons loan approval rate 
-select count(*) as married_person_loan_approved
-from loan where loan_status = "Approved" and married = "Yes";
+select count(*) as married_person_loan_approved,
+round(sum(case when  married = "Yes" then 1 else 0 end)*100/count(*),2) as married_person_loan_approval_rate
+from loan where loan_status = "Approved" ;
 
 
  -- unmarried persons loan approval rate 
-select count(*) as unmarried_person_loan_approved
-from loan where loan_status = "Approved" and married = "No";
+select count(*) as unmarried_person_loan_approved,
+round(sum(case when  married = "No" then 1 else 0 end)*100/count(*),2) as Unmarried_person_loan_approval_rate
+from loan where loan_status = "Approved";
 
 
 -- graduate persno loan approved rate 
-select count(*) as graduare__person_loan_approved
-from loan where loan_status = "Approved" and education = "Graduate" ;
+select count(*) as graduare__person_loan_approved,
+round(sum(case when education = "Graduate" then 1 else 0 end)*100/count(*),2) as graduare__person_loan_approval_rate
+from loan where loan_status = "Approved" ;
 
 -- no graduate persno loan approved rate 
-select count(*) as Not_graduare__person_loan_approved
-from loan where loan_status = "Approved" and education = "Not Graduate" ;
+select count(*) as Not_graduare__person_loan_approved,
+round(sum(case when education = "Not Graduate" then 1 else 0 end)*100/count(*),2) as Ungraduare__person_loan_approval_rate
+from loan where loan_status = "Approved";
 
 
 
@@ -231,8 +241,8 @@ from loan group by loan_status;
 
 
 -- highest loan amount among approved loans
-select max(loan_amount) as high_loan_amount_approved_loans
-from loan where loan_status = "Approved";
+select * from loan where loan_amount = (select max(loan_amount) as high_loan_amount_approved_loans
+from loan where loan_status = "Approved");
 
 -- highest loan amount among rejected loans
 select max(loan_amount) as high_loan_amount_rejected_loans
@@ -271,7 +281,7 @@ from loan;
 
 -- calculate low , medium and maximum loan amount and approval rate 
 select (case when loan_amount <100000 then "low"
-when loan_amount < 200000 then "Medium"
+when loan_amount> 100000  and loan_amount < 200000 then "Medium"
 else "high" end) as loan_amount_range,
 count(*) as total_loan_applicant,
 sum(case when loan_status = "Approved" then 1 else 0 end) as approved_loans,
@@ -292,11 +302,12 @@ from loan;
 -- income with recived loan amounts
 select 
 (case when applicant_income < 40000 then "low"
-when applicant_income < 90000 then "medium"
+when applicant_income > 40000 and applicant_income < 85000 then "medium"
 else "high" end) as applicant_income_catagory,
 count(*) as app_inco_category_count,
 avg(applicant_income) as average_applicant_income,
-avg(loan_amount) as avg_loan_amount
+avg(loan_amount) as avg_loan_amount,
+round(sum(case when loan_status = "Approved" then 1 else 0 end) / count(*) * 100,2) as loan_approval_rate
 from loan group by applicant_income_catagory; 
 
 
@@ -377,7 +388,8 @@ from loan group by  group_of_cradit_history ;
 
 
 -- typical profile of an approved applicant using averages and most common categories
-select avg(age) as average_age,
+select count(*) as total,
+ avg(age) as average_age,
 avg(applicant_income) as avg_applicant_income,
 avg(loan_amount) as loan_amount, 
 avg(coapplicant_income) as avg_co_applicant_income,
@@ -392,7 +404,7 @@ from loan where loan_status = "Approved"
 group by gender  order by total
 desc limit 1;
 
--- most common married status  to ampproved loans
+-- most common married status  to approved loans
 select married,
 count(*) as total
 from loan 
@@ -400,8 +412,15 @@ where loan_status = "Approved"
 group by married
 order by total desc limit 1;
 
+select married ,
+count(*) as count,
+sum(case when loan_status = "Approved" then 1 else 0 end) as loan_approved_count,
+round(sum(case when loan_status = "Approved" then 1 else 0 end) /count(*) * 100,2) as loan_approval_rate
+from loan 
+group by married;
 
--- most common educated people  to ampproved loans
+
+-- most common educated people  to approved loans
 select  education ,
 count(*) as total 
 from loan 
@@ -411,7 +430,7 @@ order by total
 desc limit 1;
 
 
--- most commmon employment tatus  to approved loans
+-- most commmon employment status  to approved loans
 select  employment_status ,
 count(*) as total 
 from loan 
@@ -546,12 +565,18 @@ order by loan_amount
 desc limit 10;
 
 
--- 5 most important factors associvated with the loan_aproval
+-- most important factors associvated with the loan_aproval
 -- ans
 -- 1 - employment status salaried  and cradit history is 1(which is means good cradit history)
--- 2- most of the applicant are graduated and their approval rate is more than 50%
+-- 2- most of the applicant are graduated and their loan approval rate is 77.91%
+-- 3- married status is yess in both gender so they are the loan approval rate is 70% 
+-- 4- The applicant are income greater then 40000 and less than 85000 in medium range they  are the 363 applicant loan approved
+-- 5- The loan applicant of amount between 100000 to 200000 for that loan approval rate is 53%
+-- 6- Most of loan approves applicant is salaried
 
-select * from loan limit 10;
+
+
+-- select * from loan limit 10;
 
 
  
